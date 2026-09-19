@@ -1,4 +1,4 @@
-"""Generate the demo narration as per-beat segments and assemble the full MP3.
+"""Generate the demo narration as per-scene segments and assemble the full MP3.
 
     py -3.13 tools/make_narration.py [extra-output-dir]
 
@@ -7,13 +7,12 @@ expects it) and, if an extra directory is given, copies it there too.
 
 Also writes tools/narration-timing.json:
 
-    {"beats": {"intro": {"dur": 4.51, "span": 4.89, "start": 0.0}, ...},
-     "_total": 37.99, "_gap_ms": 380}
+    {"beats": {"hook": {"dur": 9.8, "span": 10.2, "start": 0.0}, ...},
+     "_total": 74.9, "_gap_ms": 380}
 
 `dur` is the spoken line, `span` is the line plus the trailing silence, and
-`start` is the beat's offset in the assembled file. make_demo_video.py paces
-each beat to its `span` - not its `dur` - so the picture advances in step with
-the audio instead of drifting a gap further ahead on every beat.
+`start` is the scene's offset in the assembled file. make_demo_video.py paces
+each scene to its `span` so picture and audio stay in step.
 
 Dependencies: edge-tts (neural TTS), imageio-ffmpeg (concat + probing).
 """
@@ -34,20 +33,37 @@ REPO = Path(__file__).resolve().parent.parent
 TIMING = REPO / "tools" / "narration-timing.json"
 
 VOICE = "en-US-AndrewMultilingualNeural"
-RATE = "+6%"
-GAP_MS = 380  # silence between beats
+RATE = "+5%"
+GAP_MS = 380  # silence between scenes
 
-# key -> spoken line. Keys match the beat names used by the video renderer.
+# key -> spoken line. Keys match the scene names used by the video renderer.
 SEGMENTS: list[tuple[str, str]] = [
-    ("intro", "Install it. Then one command. The demo walks through every verdict."),
-    ("s1", "A fresh session. Every strategy is on the table, and the choice is yours."),
-    ("s2", "Then a loss. It rotates away from the loser, and sizes the recovery "
-           "to the loss. One twenty."),
-    ("s3", "A second loss, and the stake halves."),
-    ("s4", "A third consecutive loss, and it stops."),
-    ("s5", "Equity below the floor? It stops too, whatever the ledger says."),
-    ("s6", "And every override is recorded. Counted. Never silent."),
-    ("close", "riskgovernor. Gates halt. Losses rotate. Overrides leave a trail."),
+    ("hook",
+     "Every trading bot has risk rules. And almost all of them share one flaw: "
+     "the rules live inside the bot. The day they become inconvenient, someone "
+     "switches them off. That is how accounts die."),
+    ("what",
+     "riskgovernor puts the rules somewhere your bot cannot touch. A pure "
+     "decision engine: your ledger, your equity, and your policy go in. One "
+     "allowed action comes out."),
+    ("gates",
+     "The hard gates come first. Equity below the floor: halt. Three losses in "
+     "a row: halt. Drawdown past the limit: halt. No strategy gets a vote, and "
+     "nothing inside the loop can wave it through."),
+    ("rotation",
+     "Then rotation. After a loss, the governor never re-runs the strategy that "
+     "just lost. It rotates forward and sizes the recovery to the size of that "
+     "loss. One twenty lost means one twenty targeted, and stakes halve as "
+     "losses stack."),
+    ("overrides",
+     "And when you override it - and someday you will - the override is written "
+     "into the ledger. Counted. Visible on every run that follows."),
+    ("benefits",
+     "Pure Python. Zero dependencies. A pure function you can unit test. If you "
+     "run anything with a bankroll - trading bots, backtests, poker sessions - "
+     "the risk rules belong outside it."),
+    ("cta",
+     "pip install riskgovernor. The governor decides. You approve."),
 ]
 
 
@@ -128,11 +144,11 @@ def main() -> None:
     )
 
     print(f"voice: {VOICE}  rate: {RATE}")
-    print(f"{'beat':>6} {'speech':>8} {'span':>8} {'start':>8}")
+    print(f"{'scene':>10} {'speech':>8} {'span':>8} {'start':>8}")
     for key, _ in SEGMENTS:
         b = beats[key]
-        print(f"{key:>6} {b['dur']:>8.3f} {b['span']:>8.3f} {b['start']:>8.3f}")
-    print(f"{'TOTAL':>6} {'':>8} {cursor:>8.3f}  (file {total:.3f}s)")
+        print(f"{key:>10} {b['dur']:>8.3f} {b['span']:>8.3f} {b['start']:>8.3f}")
+    print(f"{'TOTAL':>10} {'':>8} {cursor:>8.3f}  (file {total:.3f}s)")
     print(f"\nwrote {target} ({target.stat().st_size / 1e3:.0f} kB)")
     if extra is not None:
         extra.mkdir(parents=True, exist_ok=True)

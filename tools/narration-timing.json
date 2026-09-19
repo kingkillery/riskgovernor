@@ -1,46 +1,41 @@
 {
  "beats": {
-  "intro": {
-   "dur": 4.51,
-   "span": 4.89,
+  "hook": {
+   "dur": 11.52,
+   "span": 11.9,
    "start": 0.0
   },
-  "s1": {
-   "dur": 5.06,
-   "span": 5.44,
-   "start": 4.89
+  "what": {
+   "dur": 10.34,
+   "span": 10.72,
+   "start": 11.9
   },
-  "s2": {
-   "dur": 7.03,
-   "span": 7.41,
-   "start": 10.33
+  "gates": {
+   "dur": 12.89,
+   "span": 13.27,
+   "start": 22.62
   },
-  "s3": {
-   "dur": 2.4,
-   "span": 2.78,
-   "start": 17.74
+  "rotation": {
+   "dur": 15.36,
+   "span": 15.74,
+   "start": 35.89
   },
-  "s4": {
-   "dur": 2.81,
-   "span": 3.19,
-   "start": 20.52
+  "overrides": {
+   "dur": 8.95,
+   "span": 9.33,
+   "start": 51.63
   },
-  "s5": {
-   "dur": 4.03,
-   "span": 4.41,
-   "start": 23.71
+  "benefits": {
+   "dur": 12.22,
+   "span": 12.6,
+   "start": 60.96
   },
-  "s6": {
-   "dur": 4.18,
-   "span": 4.56,
-   "start": 28.12
-  },
-  "close": {
-   "dur": 5.26,
-   "span": 5.26,
-   "start": 32.68
+  "cta": {
+   "dur": 4.3,
+   "span": 4.3,
+   "start": 73.56
   }
  },
- "_total": 37.99,
+ "_total": 77.9,
  "_gap_ms": 380
 }

@@ -13,7 +13,7 @@ It never places an order. It prints a command for a human to approve.
 
 ![riskgovernor demo](docs/demo.gif)
 
-*Thirty-eight seconds, narrated — every verdict, in order.*
+*Seventy-eight seconds: the problem, the model, and the demo — narrated.*
 [Silent master](docs/demo.mp4) · [**with voiceover**](docs/demo-voiced.mp4)
 
 ## 30-second start
