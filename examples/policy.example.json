@@ -1,0 +1,54 @@
+{
+  "unit": "USD",
+  "scale": "1",
+  "note_template": "E{episode} {strategy} {mode} streak={streak}",
+  "gates": {
+    "floor": "5000",
+    "max_consecutive_losses": 3,
+    "max_drawdown": "2000"
+  },
+  "strategies": [
+    {
+      "id": "core",
+      "config_files": ["core.json"],
+      "command": "python run_strategy.py {episode} {config} {note_arg}",
+      "recovery": {
+        "params": { "max_loss": "100", "max_rounds": 15 },
+        "size_param": "max_profit",
+        "cap": "200",
+        "stake_param": "base_stake",
+        "stake_base": "50",
+        "stake_halved": "25",
+        "halve_at_streak": 2
+      }
+    },
+    {
+      "id": "defensive",
+      "config_files": ["defensive.json"],
+      "command": "python run_strategy.py {episode} {config} {note_arg}",
+      "recovery": {
+        "params": { "max_loss": "100", "max_rounds": 40 },
+        "size_param": "max_profit",
+        "cap": "200",
+        "stake_param": "base_stake",
+        "stake_base": "50",
+        "stake_halved": "25",
+        "halve_at_streak": 2
+      }
+    },
+    {
+      "id": "aggressive",
+      "config_files": ["aggressive.json"],
+      "command": "python run_strategy.py {episode} {config} {note_arg}",
+      "recovery": {
+        "params": { "max_loss": "100", "max_rounds": 15 },
+        "size_param": "max_profit",
+        "cap": "200",
+        "stake_param": "base_stake",
+        "stake_base": "50",
+        "stake_halved": "25",
+        "halve_at_streak": 2
+      }
+    }
+  ]
+}
