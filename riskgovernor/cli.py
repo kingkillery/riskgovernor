@@ -1,10 +1,17 @@
 """Command-line entry point.
 
-    python -m riskgovernor --policy policy.json --ledger ledger.json --equity 0.000154
+Three subcommands:
 
-Prints a state block and a verdict. On a RECOVERY verdict it writes the
-resolved parameter overrides to the strategy's config files (unless
+    riskgovernor demo                       zero-config guided tour
+    riskgovernor init [DIR]                 scaffold a working setup
+    riskgovernor decide --policy ... --ledger ...
+
+``decide`` prints a state block and a verdict. On a RECOVERY verdict it writes
+the resolved parameter overrides to the strategy's config files (unless
 ``--dry-run``) and then prints the command for an operator to approve.
+
+Bare flags are treated as ``decide`` arguments, so
+``riskgovernor --policy p.json --ledger l.json`` keeps working.
 
 The CLI never launches a strategy. Recommendation and execution are separate
 on purpose.
@@ -14,25 +21,35 @@ Units: every numeric in the policy (gates, caps, recovery params) and every
 ledger's ``net`` values. ``policy.scale`` and ``policy.unit`` affect display
 only and never participate in a comparison.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import sys
-from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
-from .governor import Decision, Governor, Verdict
+from . import quickstart
+from .governor import Governor, Verdict
 from .ledger import Ledger, to_decimal
 from .params import MissingConfigError, ParamStore
 from .policy import RiskPolicy
+from .report import format_report
+
+SUBCOMMANDS = ("demo", "init", "decide")
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="riskgovernor",
-        description="Decide the next governed action from a ledger and a policy.",
-    )
+def _normalise(argv: list[str]) -> list[str]:
+    """Prepend ``decide`` when the first argument is a bare flag."""
+    if not argv or argv[0] in ("-h", "--help") or argv[0] in SUBCOMMANDS:
+        return argv
+    if argv[0].startswith("-"):
+        return ["decide", *argv]
+    return argv
+
+
+def _add_decide_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--policy", required=True, help="policy JSON path")
     parser.add_argument("--ledger", required=True, help="ledger JSON path")
     parser.add_argument(
@@ -57,67 +74,52 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--json", action="store_true", dest="as_json", help="emit JSON instead of text"
     )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="riskgovernor",
+        description="Decide the next governed action from a ledger and a policy.",
+        epilog=(
+            "Try `riskgovernor demo` for a zero-config tour, or "
+            "`riskgovernor init` to scaffold a working setup."
+        ),
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    demo = sub.add_parser("demo", help="guided tour: no files, no setup")
+    demo.set_defaults(func=run_demo_command)
+
+    init = sub.add_parser("init", help="scaffold policy.json, ledger.json and configs")
+    init.add_argument("dir", nargs="?", default=".", help="target directory (default: .)")
+    init.add_argument("--force", action="store_true", help="overwrite existing files")
+    init.set_defaults(func=run_init_command)
+
+    decide = sub.add_parser("decide", help="print the verdict for a ledger")
+    _add_decide_args(decide)
+    decide.set_defaults(func=run_decide_command)
+
     return parser
 
 
-def _fmt(value: Decimal | None, scale: Decimal, unit: str) -> str:
-    if value is None:
-        return "unavailable"
-    text = f"{value * scale:.2f}"
-    return f"{text} {unit}".strip()
+def run_demo_command(args: argparse.Namespace) -> int:
+    return quickstart.run_demo()
 
 
-def format_report(decision: Decision, policy: RiskPolicy) -> str:
-    """Human-readable state block plus verdict."""
-    m = decision.metrics
-    scale = policy.scale
-    unit = policy.unit
-
-    lines = ["--- RISK GOVERNOR ---"]
-    lines.append(f"last episode:   {m.last_episode if m.last_episode is not None else 'n/a'}")
-    lines.append(f"last net:       {_fmt(m.last_net, scale, unit)}")
-    lines.append(f"last strategy:  {m.last_strategy or 'untagged'}")
-    lines.append(f"streak:         {m.streak}")
-    lines.append(f"drawdown:       {_fmt(m.drawdown, scale, unit)}")
-    lines.append(f"cumulative:     {_fmt(m.cumulative, scale, unit)}")
-    lines.append(f"peak:           {_fmt(m.peak, scale, unit)}")
-
-    if decision.equity is None:
-        lines.append(f"equity:         unavailable ({unit or 'no unit'})")
-        lines.append("floor headroom: unknown")
-    else:
-        lines.append(f"equity:         {_fmt(decision.equity, scale, unit)}")
-        floor = policy.gates.floor
-        if floor is None:
-            lines.append("floor headroom: no floor set")
-        else:
-            lines.append(f"floor headroom: {_fmt(decision.equity - floor, scale, unit)}")
-
-    lines.append(f"overrides used: {m.overrides}")
-
-    for note in decision.notes:
-        lines.append(f"note:           {note}")
-
-    lines.append("")
-    if decision.verdict is Verdict.HALT:
-        lines.append(f"VERDICT: HALT ({decision.reason})")
-    elif decision.verdict is Verdict.RECOVERY:
-        lines.append(f"VERDICT: RECOVERY {decision.strategy}")
-        for key, value in decision.overrides.items():
-            lines.append(f"  set {key} = {value}")
-        for strategy_id, command in decision.commands.items():
-            lines.append(f"  {command}")
-    else:
-        lines.append("VERDICT: STANDARD")
-        for index, (strategy_id, command) in enumerate(decision.commands.items(), 1):
-            lines.append(f"  [{index}] {command}")
-
-    return "\n".join(lines)
+def run_init_command(args: argparse.Namespace) -> int:
+    created, skipped = quickstart.write_scaffold(args.dir, force=args.force)
+    for name in created:
+        print(f"wrote {name}")
+    for name in skipped:
+        print(f"skipped {name} (already exists; use --force to overwrite)")
+    print()
+    print("Next:")
+    prefix = "" if args.dir == "." else f"{args.dir}/"
+    print(f"  riskgovernor decide --policy {prefix}policy.json --ledger {prefix}ledger.json")
+    return 0
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-
+def run_decide_command(args: argparse.Namespace) -> int:
     try:
         policy = RiskPolicy.from_path(args.policy)
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
@@ -127,9 +129,19 @@ def main(argv: list[str] | None = None) -> int:
         print("error: policy declares no strategies", file=sys.stderr)
         return 1
 
-    ledger = Ledger.from_path(args.ledger)
-    if not ledger:
-        print(f"warning: ledger {args.ledger!r} is empty or unreadable", file=sys.stderr)
+    ledger_path = Path(args.ledger)
+    if ledger_path.exists():
+        try:
+            ledger = Ledger.from_dict(json.loads(ledger_path.read_text(encoding="utf-8")))
+        except (OSError, ValueError) as exc:
+            print(f"error: ledger {args.ledger!r} is not valid JSON: {exc}", file=sys.stderr)
+            return 1
+    else:
+        # A missing ledger is a first-class state (fresh session), not an
+        # error; a corrupt one is refused rather than silently treated as
+        # empty, because every metric would reset.
+        ledger = Ledger()
+        print(f"warning: ledger {args.ledger!r} not found; treating as empty", file=sys.stderr)
 
     equity = None
     if args.equity is not None:
@@ -143,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
 
     written: list[str] = []
     if decision.verdict is Verdict.RECOVERY and decision.overrides:
-        root = args.params_root or str(ledger_path_parent(args.ledger))
+        root = args.params_root or str(Path(args.ledger).parent)
         store = ParamStore(root, indent=policy.indent)
         try:
             written = store.apply(
@@ -170,10 +182,15 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def ledger_path_parent(ledger_path: str):
-    from pathlib import Path
-
-    return Path(ledger_path).parent
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:]) if argv is None else list(argv)
+    parser = build_parser()
+    args = parser.parse_args(_normalise(argv))
+    func = getattr(args, "func", None)
+    if func is None:
+        parser.print_help()
+        return 0
+    return func(args)
 
 
 if __name__ == "__main__":

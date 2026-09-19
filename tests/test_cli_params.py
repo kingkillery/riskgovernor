@@ -161,7 +161,26 @@ def test_cli_missing_ledger_warns_but_proceeds(tmp_path, capsys):
     code = main(["--policy", str(tmp_path / "policy.json"), "--ledger", str(tmp_path / "nope.json")])
     captured = capsys.readouterr()
     assert code == 0
-    assert "empty or unreadable" in captured.err
+    assert "not found; treating as empty" in captured.err
+    assert "VERDICT: STANDARD" in captured.out
+
+
+def test_cli_corrupt_ledger_is_refused_not_emptied(tmp_path, capsys):
+    (tmp_path / "policy.json").write_text(json.dumps(POLICY), encoding="utf-8")
+    (tmp_path / "ledger.json").write_text("{not json", encoding="utf-8")
+    code = main(["--policy", str(tmp_path / "policy.json"), "--ledger", str(tmp_path / "ledger.json")])
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "not valid JSON" in captured.err
+
+
+def test_cli_fresh_empty_ledger_prints_no_warning(tmp_path, capsys):
+    (tmp_path / "policy.json").write_text(json.dumps(POLICY), encoding="utf-8")
+    (tmp_path / "ledger.json").write_text('{"episodes": []}', encoding="utf-8")
+    code = main(["--policy", str(tmp_path / "policy.json"), "--ledger", str(tmp_path / "ledger.json")])
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.err == ""
     assert "VERDICT: STANDARD" in captured.out
 
 
@@ -253,3 +272,62 @@ def test_cli_policy_without_strategies_exits_cleanly(tmp_path, capsys):
     )
     assert code == 1
     assert "no strategies" in capsys.readouterr().err
+
+
+def test_cli_demo_needs_no_files(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    code = main(["demo"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "VERDICT: STANDARD" in out
+    assert out.count("VERDICT: RECOVERY") >= 2
+    assert "VERDICT: HALT (3 consecutive losses)" in out
+    assert "VERDICT: HALT (equity below floor)" in out
+    assert "overrides used: 1" in out
+    assert "set base_stake = 25" in out          # streak-2 halving is visible
+    assert "riskgovernor init" in out            # points at the next step
+    assert list(tmp_path.iterdir()) == []        # truly zero files written
+
+
+def test_cli_init_scaffolds_a_working_setup(tmp_path, capsys):
+    code = main(["init", str(tmp_path)])
+    assert code == 0
+    for name in ("policy.json", "ledger.json", "steady.json",
+                 "defensive.json", "aggressive.json"):
+        assert (tmp_path / name).exists(), name
+    capsys.readouterr()
+
+    code = main(["decide", "--policy", str(tmp_path / "policy.json"),
+                 "--ledger", str(tmp_path / "ledger.json")])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "VERDICT: STANDARD" in out
+    assert "[3] python my_runner.py 1 aggressive.json" in out
+
+
+def test_cli_init_refuses_to_clobber_without_force(tmp_path, capsys):
+    main(["init", str(tmp_path)])
+    capsys.readouterr()
+    code = main(["init", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert out.count("skipped") == 5
+    assert "wrote" not in out
+
+    code = main(["init", str(tmp_path), "--force"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert out.count("wrote") == 5
+
+
+def test_cli_bare_flags_still_mean_decide(tmp_path, capsys):
+    policy, ledger = setup(tmp_path, [{"id": 1, "net": "1", "strategy": "a"}])
+    code = main(["--policy", policy, "--ledger", ledger, "--json"])
+    assert code == 0
+    assert json.loads(capsys.readouterr().out)["verdict"] == "STANDARD"
+
+
+def test_cli_no_arguments_prints_help(capsys):
+    assert main([]) == 0
+    out = capsys.readouterr().out
+    assert "demo" in out and "init" in out and "decide" in out

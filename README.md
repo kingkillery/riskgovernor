@@ -7,8 +7,27 @@ The governor answers exactly one question — *what should the next episode be,
 given what has already happened?* — and it answers it the same way every time.
 It never places an order. It prints a command for a human to approve.
 
+## 30-second start
+
 ```console
-$ python -m riskgovernor --policy policy.json --ledger ledger.json --equity 0.00015414
+$ pip install riskgovernor
+$ riskgovernor demo
+```
+
+`demo` needs no files and walks through every verdict in order — STANDARD,
+RECOVERY, both HALTs, and what an override looks like. When you want your
+own setup:
+
+```console
+$ riskgovernor init                 # writes policy.json, ledger.json, config stubs
+$ riskgovernor decide --policy policy.json --ledger ledger.json
+```
+
+Three commands, zero reading required. The rest of this README is what's
+underneath.
+
+```console
+$ riskgovernor decide --policy policy.json --ledger ledger.json --equity 0.00015414
 --- RISK GOVERNOR ---
 last episode:   38
 last net:       -3.04 uBTC
@@ -48,7 +67,8 @@ whatever runner you already have.
 Pure standard library, no dependencies.
 
 ```console
-pip install -e .
+pip install riskgovernor        # from PyPI
+pip install -e ".[dev]"         # from a checkout, with test deps
 ```
 
 ## The verdict table
@@ -223,7 +243,7 @@ replayed against history.
 python -m pytest tests -q
 ```
 
-67 tests cover ledger parsing and metric derivation (including NaN and
+74 tests cover ledger parsing and metric derivation (including NaN and
 non-finite rejection), gate ordering and precedence, rotation and recovery
 sizing, config-file preservation and failure atomicity, policy validation,
 and the CLI end to end.

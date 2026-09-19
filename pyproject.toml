@@ -13,6 +13,11 @@ authors = [{ name = "kingkillery" }]
 keywords = ["risk", "bankroll", "drawdown", "position-sizing", "trading"]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",
     "Topic :: Office/Business :: Financial",
@@ -27,6 +32,9 @@ riskgovernor = "riskgovernor.cli:main"
 
 [tool.setuptools]
 packages = ["riskgovernor"]
+
+[tool.setuptools.package-data]
+riskgovernor = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
