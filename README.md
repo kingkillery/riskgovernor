@@ -11,6 +11,11 @@ The governor answers exactly one question — *what should the next episode be,
 given what has already happened?* — and it answers it the same way every time.
 It never places an order. It prints a command for a human to approve.
 
+![riskgovernor demo](docs/demo.gif)
+
+*Nineteen seconds of the real thing — every verdict, in order. Higher-quality
+[MP4](docs/demo.mp4) if you want it full size.*
+
 ## 30-second start
 
 ```console
