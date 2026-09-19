@@ -1,5 +1,9 @@
 # riskgovernor
 
+[![CI](https://github.com/kingkillery/riskgovernor/actions/workflows/ci.yml/badge.svg)](https://github.com/kingkillery/riskgovernor/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/riskgovernor.svg)](https://pypi.org/project/riskgovernor/)
+[![Python](https://img.shields.io/pypi/pyversions/riskgovernor.svg)](https://pypi.org/project/riskgovernor/)
+
 Deterministic bankroll risk governance: hard gates, strategy rotation, and
 loss-sized recovery, expressed as pure data plus a pure decision function.
 
